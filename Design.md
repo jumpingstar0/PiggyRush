@@ -2,9 +2,9 @@
 
 ## 1. Product Summary
 
-PiggyRush is a single-screen, two-player co-op tower-defense game designed for iPad browsers. It is inspired by the readable lane defense, wave pressure, and tactical tower placement of Kingdom Rush, but its signature feature is local simultaneous play: two players share one iPad in landscape orientation, each controlling one hero from their own half of the screen.
+PiggyRush is a single-screen, two-player co-op tower-defense game designed for iPad browsers. It is inspired by the readable lane defense, wave pressure, and tactical tower placement of Kingdom Rush, but its signature feature is local simultaneous play: two players share one iPad in landscape orientation, each holding one short edge of the iPad face-to-face and controlling one hero from that edge.
 
-The first playable version is one polished level delivered as a self-contained `index.html`. It must run by opening the file directly in Safari or Chrome on iPad, without a build step, backend, external assets, or network dependency.
+The first playable version is one polished level delivered as a single `index.html`. It uses Phaser 3 for rendering, scaling, game loop, and multi-touch input, with no build step or backend.
 
 ### Core Promise
 
@@ -15,22 +15,22 @@ Two players defend the piggy-bank kingdom together: build towers, fight enemies 
 - Primary: iPad in landscape orientation.
 - Secondary: desktop browser for development and testing.
 - Input: multi-touch through Pointer Events.
-- Rendering: full-screen Canvas 2D scaled by `devicePixelRatio`.
+- Rendering/input engine: Phaser 3, full-screen responsive canvas, multi-pointer touch enabled.
 
 ## 2. Design Goals
 
 1. **Immediate shared-screen co-op**
    - Both players can move, fight, and cast abilities at the same time.
-   - Controls are separated by screen half so players do not need to cross hands.
+   - Controls are separated by short edge so players do not need to cross hands.
 
 2. **Readable tower-defense action**
    - Enemies, towers, heroes, projectiles, health, gold, and wave state must be clear at arm's length.
    - The battlefield should feel busy but never visually noisy.
 
 3. **Single-file portability**
-   - The entire game ships as one HTML file.
-   - All art is drawn with Canvas primitives, gradients, text, and simple shapes.
-   - No image, audio, font, framework, or package downloads.
+   - The game ships as one HTML file.
+   - All art is drawn with Phaser Graphics, text, gradients, and simple shapes.
+   - No image, audio, font, or build-time package downloads.
 
 4. **Polished one-level vertical slice**
    - V1 should feel complete, not like a loose engine demo.
@@ -47,21 +47,21 @@ Two players defend the piggy-bank kingdom together: build towers, fight enemies 
 
 The game uses the whole screen in landscape.
 
-- **Left half:** Player 1 control zone.
-- **Right half:** Player 2 control zone.
+- **Left short edge:** Player 1 control zone, rotated to face the left-edge player.
+- **Right short edge:** Player 2 control zone, rotated to face the right-edge player.
 - **Center battlefield:** shared map, path, towers, enemies, heroes, and base.
 - **Top HUD:** shared lives, gold, wave number, pause/restart controls.
-- **Bottom-left control cluster:** Player 1 virtual joystick and ability button.
-- **Bottom-right control cluster:** Player 2 virtual joystick and ability button.
+- **Left-edge control cluster:** Player 1 virtual joystick and ability button, with labels rotated toward Player 1.
+- **Right-edge control cluster:** Player 2 virtual joystick and ability button, with labels rotated toward Player 2.
 
-The left and right control regions can be visually hinted with subtle translucent overlays, but the battlefield remains one shared play space.
+The left and right edge control regions can be visually hinted with subtle translucent overlays, but the battlefield remains one shared play space. Enemies travel through the center from one long side of the iPad to the opposite long side.
 
 ### Control Rules
 
 Each player can only start hero-control gestures from their own half of the screen.
 
-- Player 1 pointer starts on `x < screenWidth / 2`.
-- Player 2 pointer starts on `x >= screenWidth / 2`.
+- Player 1 pointer starts on the left half, nearest the left short edge.
+- Player 2 pointer starts on the right half, nearest the right short edge.
 - Once a pointer is assigned to a player, movement continues even if the finger drifts near the center.
 - Ability buttons belong to their player's half.
 - Tower build spots can be tapped by either player if the tap is not currently captured by a joystick or ability button.
@@ -133,38 +133,39 @@ Bright, playful fantasy arcade:
 
 V1 has one map: **Coin Meadow Pass**.
 
-The path enters from the left edge, curves through the center, and exits into the piggy-bank base at the right edge. Use a predefined waypoint list normalized to a 1000 x 600 world coordinate space.
+The path enters from the top long side, curves through the center, and exits into the piggy-bank base at the bottom long side. Use a predefined waypoint list normalized to a 1000 x 600 world coordinate space.
 
 Example path:
 
 ```js
 [
-  { x: -40, y: 290 },
-  { x: 150, y: 290 },
-  { x: 250, y: 180 },
-  { x: 430, y: 190 },
-  { x: 560, y: 340 },
-  { x: 730, y: 350 },
-  { x: 850, y: 250 },
-  { x: 1040, y: 250 }
+  { x: 500, y: -45 },
+  { x: 500, y: 95 },
+  { x: 406, y: 170 },
+  { x: 455, y: 260 },
+  { x: 590, y: 330 },
+  { x: 545, y: 440 },
+  { x: 500, y: 520 },
+  { x: 500, y: 645 }
 ]
 ```
 
 ### Build Spots
 
-Use 7 fixed build spots positioned near, but not on, the path.
+Use 8 fixed build spots positioned near, but not on, the path.
 
 Recommended normalized positions:
 
 ```js
 [
-  { x: 180, y: 210 },
-  { x: 310, y: 305 },
-  { x: 420, y: 110 },
-  { x: 540, y: 245 },
-  { x: 650, y: 430 },
-  { x: 760, y: 285 },
-  { x: 850, y: 385 }
+  { x: 350, y: 100 },
+  { x: 620, y: 125 },
+  { x: 300, y: 245 },
+  { x: 690, y: 270 },
+  { x: 365, y: 410 },
+  { x: 650, y: 455 },
+  { x: 500, y: 370 },
+  { x: 500, y: 205 }
 ]
 ```
 
@@ -358,12 +359,17 @@ Recommended V1 structure:
 2. Mixed swarm plus fast enemies.
 3. First brute wave.
 4. Larger mixed wave with fast leak pressure.
-5. Final wave with brutes, swarms, and fast enemies together.
+5. Crossfire mixed wave.
+6. Shield-heavy wave.
+7. Fast-heavy wave.
+8. Thief and brute wave.
+9. Large mixed pressure wave.
+10. Final Piggy Siege with all enemy types.
 
 Wave pacing:
 
-- Start gold: 180.
-- Base health: 20.
+- Start gold: 220.
+- Base health: 25.
 - Inter-wave preparation time: manual start button plus optional countdown.
 - Final wave should be challenging but winnable with towers and active hero use.
 
@@ -371,7 +377,7 @@ Wave pacing:
 
 The economy is shared by both players.
 
-- Starting gold: 180.
+- Starting gold: 220.
 - Gold source: enemy rewards.
 - Gold spend: build towers and optional upgrades.
 - No selling in V1 unless trivial to implement.
@@ -435,8 +441,9 @@ index.html
 
 The file contains:
 
-- HTML shell with one `<canvas>` and optional overlay buttons.
+- HTML shell with one Phaser parent container.
 - Inline CSS for full-screen layout, touch behavior, and fallback UI.
+- Phaser 3 loaded by script tag.
 - Inline JavaScript for all game systems.
 
 ### Recommended JavaScript Structure
@@ -444,28 +451,27 @@ The file contains:
 Use small classes and plain configs:
 
 ```text
-Game
-InputManager
-Renderer
-WaveManager
+PiggyRushScene
 Hero
 Enemy
 Tower
 Projectile
+BurstEffect
+Beam
 FloatingText
-UI
+UI helpers
 ```
 
-### Game
+### PiggyRushScene
 
 Owns global state:
 
-- Canvas and context.
+- Phaser scene lifecycle.
 - World scale.
 - Entities.
 - Gold, base health, current wave.
 - Game mode: `start`, `playing`, `paused`, `victory`, `defeat`.
-- Main loop with `requestAnimationFrame`.
+- Main loop through Phaser `update`.
 
 Responsibilities:
 
@@ -474,11 +480,13 @@ Responsibilities:
 - Dispatch render calls.
 - Handle high-level UI actions.
 
-### InputManager
+### Multi-Touch Input
 
-Owns pointer and keyboard input:
+Input uses Phaser Pointer Events and explicitly enables extra pointers:
 
-- Tracks active pointers by `pointerId`.
+- `this.input.addPointer(8)`.
+- `input.activePointers: 10`.
+- Tracks active pointers by pointer id.
 - Assigns pointer ownership based on initial screen half.
 - Converts screen coordinates to world coordinates.
 - Updates each player's joystick vector.
@@ -489,7 +497,7 @@ Important rule: a pointer that starts in one half remains assigned to that playe
 
 ### Renderer
 
-Draws all game visuals:
+Rendering uses Phaser Graphics and Text objects. Draw order:
 
 1. Background.
 2. Path.
@@ -528,18 +536,9 @@ Each frame:
 
 ## 14. Rendering Requirements
 
-### Canvas Scaling
+### Phaser Scaling
 
-Use CSS size for layout and internal pixel size for sharp Retina rendering:
-
-```js
-const dpr = window.devicePixelRatio || 1;
-canvas.width = Math.floor(canvas.clientWidth * dpr);
-canvas.height = Math.floor(canvas.clientHeight * dpr);
-ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-```
-
-Then render using CSS pixel dimensions or a world-to-screen transform. Keep this consistent across all systems.
+Use Phaser Scale `RESIZE` mode so the game canvas fills the iPad viewport and recomputes the world-to-screen transform on resize or rotation. The fixed 1000 x 600 world maps into the available viewport with letterbox-safe scaling.
 
 ### Visual Priority
 
@@ -566,7 +565,7 @@ Handle these cases explicitly:
 
 - Both players touch at the same time.
 - One player drags across the center line.
-- A second finger appears on the same half.
+- A second finger appears on the same short-edge half.
 - A pointer is canceled by the browser.
 - The window resizes or rotates mid-game.
 - A player taps a tower spot while the other is moving.
@@ -651,7 +650,7 @@ The V1 implementation is complete when:
 - Each player is restricted to their half-screen controls.
 - The shared co-op tower-defense loop is functional from start to victory or defeat.
 - At least three tower types and three enemy types are implemented.
-- At least five scripted waves are implemented.
+- Ten scripted waves are implemented.
 - Pause, restart, victory, and defeat states work.
 - The layout remains readable and usable on iPad landscape.
 
@@ -668,4 +667,3 @@ These are intentionally out of scope for V1 but should be compatible with the ar
 - Persistent high score in `localStorage`.
 - Better art assets if the single-file constraint is relaxed.
 - Online co-op is explicitly out of scope for this design.
-
