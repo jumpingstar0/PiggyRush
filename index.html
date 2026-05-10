@@ -47,9 +47,147 @@
       touch-action: none;
     }
 
+    #setupScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(14px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+      background: rgba(39, 48, 32, 0.52);
+      color: #2e2418;
+      touch-action: manipulation;
+    }
+
+    #setupScreen.is-hidden {
+      display: none;
+    }
+
+    .setup-panel {
+      width: min(980px, 100%);
+      max-height: calc(100vh - 28px);
+      overflow: auto;
+      padding: 18px;
+      border: 4px solid #8b643a;
+      border-radius: 8px;
+      background: #fff8da;
+      box-shadow: 0 18px 54px rgba(33, 30, 18, 0.28);
+    }
+
+    .setup-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .setup-title {
+      margin: 0;
+      color: #573b22;
+      font-size: 38px;
+      line-height: 0.95;
+    }
+
+    .setup-subtitle {
+      margin: 6px 0 0;
+      color: #536334;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .setup-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .setup-section {
+      display: grid;
+      gap: 8px;
+    }
+
+    .setup-section.wide {
+      grid-column: 1 / -1;
+    }
+
+    .section-label {
+      color: #624623;
+      font-size: 14px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .choice-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .choice-card {
+      min-height: 82px;
+      padding: 10px;
+      border: 2px solid #c1a16b;
+      border-radius: 8px;
+      background: #ffeeb2;
+      color: #302516;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .choice-card strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 16px;
+      line-height: 1.05;
+    }
+
+    .choice-card span {
+      display: block;
+      color: #604b2c;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .choice-card.is-selected {
+      border-color: #2d7f44;
+      background: #d9ffc2;
+      box-shadow: inset 0 0 0 2px #2d7f44;
+    }
+
+    .choice-card.is-disabled {
+      opacity: 0.42;
+    }
+
+    .setup-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .start-button {
+      min-width: 168px;
+      min-height: 56px;
+      border: 3px solid #fff8dc;
+      border-radius: 8px;
+      background: #2d7f44;
+      color: #fff8dc;
+      font: inherit;
+      font-size: 18px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
     #rotateHint {
       position: fixed;
       inset: 0;
+      z-index: 4;
       display: none;
       align-items: center;
       justify-content: center;
@@ -61,7 +199,33 @@
       font-weight: 900;
       line-height: 1.25;
       pointer-events: none;
-      z-index: 2;
+    }
+
+    @media (max-width: 760px), (max-height: 540px) {
+      .setup-panel {
+        padding: 12px;
+      }
+
+      .setup-title {
+        font-size: 30px;
+      }
+
+      .setup-grid {
+        gap: 10px;
+      }
+
+      .choice-card {
+        min-height: 70px;
+        padding: 8px;
+      }
+
+      .choice-card strong {
+        font-size: 14px;
+      }
+
+      .choice-card span {
+        font-size: 12px;
+      }
     }
 
     @media (orientation: portrait) and (max-width: 900px) {
@@ -73,1149 +237,8 @@
 </head>
 <body>
   <div id="game" aria-label="PiggyRush two player tower defense game"></div>
+  <div id="setupScreen" aria-label="PiggyRush setup screen"></div>
   <div id="rotateHint">Rotate the iPad to landscape. Each player holds one short edge.</div>
-
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-  <script>
-  "use strict";
-
-  const WORLD = { width: 1000, height: 600, heroMinY: 58, heroMaxY: 548 };
-  const PATH = [
-    { x: 500, y: -45 },
-    { x: 500, y: 95 },
-    { x: 406, y: 170 },
-    { x: 455, y: 260 },
-    { x: 590, y: 330 },
-    { x: 545, y: 440 },
-    { x: 500, y: 520 },
-    { x: 500, y: 645 }
-  ];
-  const BUILD_SPOTS = [
-    { x: 350, y: 100 },
-    { x: 620, y: 125 },
-    { x: 300, y: 245 },
-    { x: 690, y: 270 },
-    { x: 365, y: 410 },
-    { x: 650, y: 455 },
-    { x: 500, y: 370 },
-    { x: 500, y: 205 }
-  ];
-  const TOWER_TYPES = {
-    archer: { key: "archer", name: "Archer", short: "AR", cost: 70, range: 170, damage: 16, cooldown: 0.55, projectileSpeed: 600, color: 0x3a9b4b, dark: 0x206330, splash: 0, slow: 0, slowDuration: 0 },
-    cannon: { key: "cannon", name: "Cannon", short: "CN", cost: 100, range: 145, damage: 28, cooldown: 1.25, projectileSpeed: 410, color: 0xc46c3b, dark: 0x7c3b22, splash: 55, slow: 0, slowDuration: 0 },
-    magic: { key: "magic", name: "Magic", short: "MG", cost: 85, range: 155, damage: 8, cooldown: 0.9, projectileSpeed: 520, color: 0x4d8ed8, dark: 0x24538e, splash: 0, slow: 0.35, slowDuration: 1.8 }
-  };
-  const ENEMY_TYPES = {
-    swarm: { key: "swarm", name: "Swarm Goblin", maxHealth: 32, speed: 58, reward: 8, baseDamage: 1, radius: 14, color: 0x6ec052, dark: 0x315f29 },
-    fast: { key: "fast", name: "Sprint Rat", maxHealth: 24, speed: 95, reward: 9, baseDamage: 1, radius: 12, color: 0xd89245, dark: 0x7b481f },
-    brute: { key: "brute", name: "Shield Brute", maxHealth: 130, speed: 38, reward: 22, baseDamage: 3, radius: 20, color: 0x6f7582, dark: 0x343945 },
-    thief: { key: "thief", name: "Coin Thief", maxHealth: 58, speed: 68, reward: 14, baseDamage: 1, stealGold: 5, radius: 14, color: 0xc9b44b, dark: 0x786b25 }
-  };
-  const WAVES = [
-    { name: "First Snatchers", groups: [{ type: "swarm", count: 8, interval: 0.72, delay: 0.2 }] },
-    { name: "Fast Feet", groups: [{ type: "swarm", count: 9, interval: 0.58, delay: 0 }, { type: "fast", count: 5, interval: 0.85, delay: 3.0 }] },
-    { name: "Shield Push", groups: [{ type: "brute", count: 3, interval: 1.75, delay: 0.3 }, { type: "swarm", count: 11, interval: 0.5, delay: 2.0 }] },
-    { name: "Coin Grab", groups: [{ type: "thief", count: 5, interval: 0.85, delay: 0.1 }, { type: "fast", count: 8, interval: 0.62, delay: 2.2 }, { type: "swarm", count: 12, interval: 0.45, delay: 4.6 }] },
-    { name: "Crossfire", groups: [{ type: "swarm", count: 16, interval: 0.42, delay: 0.2 }, { type: "fast", count: 8, interval: 0.58, delay: 2.8 }, { type: "brute", count: 3, interval: 1.3, delay: 5.4 }] },
-    { name: "Shield Parade", groups: [{ type: "brute", count: 5, interval: 1.1, delay: 0 }, { type: "thief", count: 5, interval: 0.7, delay: 2.6 }, { type: "swarm", count: 14, interval: 0.36, delay: 4.8 }] },
-    { name: "Rat River", groups: [{ type: "fast", count: 14, interval: 0.42, delay: 0.1 }, { type: "swarm", count: 18, interval: 0.32, delay: 2.0 }, { type: "brute", count: 3, interval: 1.2, delay: 6.2 }] },
-    { name: "Vault Crackers", groups: [{ type: "thief", count: 8, interval: 0.55, delay: 0 }, { type: "brute", count: 6, interval: 1.0, delay: 1.8 }, { type: "fast", count: 10, interval: 0.48, delay: 5.0 }] },
-    { name: "Double Trouble", groups: [{ type: "swarm", count: 24, interval: 0.28, delay: 0 }, { type: "fast", count: 12, interval: 0.4, delay: 2.4 }, { type: "thief", count: 8, interval: 0.55, delay: 5.0 }, { type: "brute", count: 5, interval: 1.05, delay: 7.0 }] },
-    { name: "Piggy Siege", groups: [{ type: "brute", count: 8, interval: 0.95, delay: 0 }, { type: "swarm", count: 28, interval: 0.25, delay: 0.8 }, { type: "fast", count: 16, interval: 0.36, delay: 4.4 }, { type: "thief", count: 10, interval: 0.5, delay: 7.4 }] }
-  ];
-  const HERO_CONFIGS = [
-    { id: 0, name: "Penny Knight", label: "P1", x: 210, y: 330, color: 0xe35858, trim: 0xffe08a, maxHealth: 160, speed: 145, attackRange: 48, attackDamage: 18, attackCooldown: 0.6, abilityName: "Piggy Slam", abilityShort: "SLAM", abilityCooldown: 8, abilityType: "slam" },
-    { id: 1, name: "Coin Mage", label: "P2", x: 790, y: 270, color: 0x4f83df, trim: 0xf7d35a, maxHealth: 110, speed: 165, attackRange: 150, attackDamage: 12, attackCooldown: 0.8, abilityName: "Gold Spark", abilityShort: "SPARK", abilityCooldown: 7, abilityType: "spark" }
-  ];
-  const UI = { joystickRadius: 66, joystickKnob: 26, abilityRadius: 42, spotRadius: 26 };
-  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-  const dist = (a, b, c, d) => Math.hypot(a - c, b - d);
-  const distSq = (a, b, c, d) => {
-    const dx = a - c;
-    const dy = b - d;
-    return dx * dx + dy * dy;
-  };
-
-  class Hero {
-    constructor(config) {
-      Object.assign(this, config);
-      this.health = config.maxHealth;
-      this.attackTimer = 0;
-      this.abilityTimer = 0;
-      this.reviveTimer = 0;
-      this.down = false;
-      this.facing = { x: 1, y: 0 };
-      this.hitFlash = 0;
-    }
-
-    update(dt, scene, vector) {
-      this.attackTimer = Math.max(0, this.attackTimer - dt);
-      this.abilityTimer = Math.max(0, this.abilityTimer - dt);
-      this.hitFlash = Math.max(0, this.hitFlash - dt);
-      if (this.down) {
-        this.reviveTimer -= dt;
-        if (this.reviveTimer <= 0) {
-          this.down = false;
-          this.health = Math.round(this.maxHealth * 0.6);
-          this.x = clamp(this.x, 420, 580);
-          this.y = clamp(this.y, 430, 540);
-          scene.addFloatingText("Back in!", this.x, this.y - 38, 0x1f6630, 1.1, 18);
-        }
-        return;
-      }
-      const mag = Math.hypot(vector.x, vector.y);
-      if (mag > 0.04) {
-        this.x += vector.x * this.speed * dt;
-        this.y += vector.y * this.speed * dt;
-        this.facing = { x: vector.x / mag, y: vector.y / mag };
-      }
-      this.x = clamp(this.x, 24, WORLD.width - 24);
-      this.y = clamp(this.y, WORLD.heroMinY, WORLD.heroMaxY);
-      const target = scene.findEnemyInRange(this.x, this.y, this.attackRange);
-      if (target && this.attackTimer <= 0) {
-        this.attackTimer = this.attackCooldown;
-        if (this.id === 0) {
-          target.takeDamage(this.attackDamage, scene);
-          scene.effects.push(new BurstEffect(target.x, target.y, 22, 0xffe08a));
-        } else {
-          scene.projectiles.push(new Projectile(this.x, this.y - 16, target, 520, this.attackDamage, 0xf7d35a, 5, 0, 0, 0));
-        }
-      }
-    }
-
-    damage(amount, scene) {
-      if (this.down) return;
-      this.health -= amount;
-      this.hitFlash = 0.16;
-      if (this.health <= 0) {
-        this.health = 0;
-        this.down = true;
-        this.reviveTimer = 6;
-        scene.addFloatingText(`${this.label} down`, this.x, this.y - 42, 0xb22a2a, 1.2, 18);
-      }
-    }
-
-    cast(scene) {
-      if (this.down || this.abilityTimer > 0) return false;
-      this.abilityTimer = this.abilityCooldown;
-      if (this.abilityType === "slam") {
-        for (const enemy of scene.enemies) {
-          if (dist(this.x, this.y, enemy.x, enemy.y) <= 90) {
-            enemy.takeDamage(45, scene);
-            enemy.pathDistance = Math.max(0, enemy.pathDistance - 18);
-            enemy.syncToPath(scene.pathSegments);
-          }
-        }
-        scene.effects.push(new BurstEffect(this.x, this.y, 90, 0xffd157, 0.38));
-        scene.addFloatingText("Piggy Slam", this.x, this.y - 56, 0x7b3b20, 1.1, 18);
-      } else {
-        const target = scene.findEnemyInRange(this.x, this.y, 420) || scene.enemies[0];
-        if (!target) return true;
-        const mag = Math.hypot(target.x - this.x, target.y - this.y) || 1;
-        const dir = { x: (target.x - this.x) / mag, y: (target.y - this.y) / mag };
-        scene.beams.push(new Beam(this.x, this.y, dir.x, dir.y, 440, 0.22));
-        for (const enemy of scene.enemies) {
-          const along = (enemy.x - this.x) * dir.x + (enemy.y - this.y) * dir.y;
-          if (along < 0 || along > 440) continue;
-          const px = this.x + dir.x * along;
-          const py = this.y + dir.y * along;
-          if (dist(enemy.x, enemy.y, px, py) <= enemy.radius + 28) {
-            enemy.takeDamage(35, scene);
-            enemy.applySlow(0.45, 2.2);
-          }
-        }
-        scene.addFloatingText("Gold Spark", this.x, this.y - 56, 0x735f08, 1.1, 18);
-      }
-      return true;
-    }
-  }
-
-  class Enemy {
-    constructor(typeKey, scene) {
-      Object.assign(this, ENEMY_TYPES[typeKey]);
-      this.typeKey = typeKey;
-      this.health = this.maxHealth;
-      this.pathDistance = 0;
-      this.segmentIndex = 0;
-      this.x = PATH[0].x;
-      this.y = PATH[0].y;
-      this.dead = false;
-      this.leaked = false;
-      this.slowTimer = 0;
-      this.slowAmount = 0;
-      this.hitFlash = 0;
-      this.biteTimer = 0.4 + Math.random() * 0.6;
-      this.syncToPath(scene.pathSegments);
-    }
-
-    syncToPath(segments) {
-      let left = this.pathDistance;
-      for (let i = 0; i < segments.length; i++) {
-        const segment = segments[i];
-        if (left <= segment.length) {
-          const t = segment.length ? left / segment.length : 0;
-          this.x = Phaser.Math.Linear(segment.a.x, segment.b.x, t);
-          this.y = Phaser.Math.Linear(segment.a.y, segment.b.y, t);
-          this.segmentIndex = i;
-          return;
-        }
-        left -= segment.length;
-      }
-      this.x = PATH[PATH.length - 1].x;
-      this.y = PATH[PATH.length - 1].y;
-      this.segmentIndex = PATH.length - 2;
-    }
-
-    update(dt, scene) {
-      this.hitFlash = Math.max(0, this.hitFlash - dt);
-      this.slowTimer = Math.max(0, this.slowTimer - dt);
-      this.biteTimer -= dt;
-      this.pathDistance += this.speed * (this.slowTimer > 0 ? 1 - this.slowAmount : 1) * dt;
-      this.syncToPath(scene.pathSegments);
-      for (const hero of scene.heroes) {
-        if (!hero.down && dist(this.x, this.y, hero.x, hero.y) < this.radius + 24 && this.biteTimer <= 0) {
-          hero.damage(this.typeKey === "brute" ? 12 : 7, scene);
-          this.biteTimer = this.typeKey === "brute" ? 1.1 : 0.9;
-        }
-      }
-      if (this.pathDistance >= scene.pathLength) this.leak(scene);
-    }
-
-    takeDamage(amount, scene) {
-      if (this.dead || this.leaked) return;
-      this.health -= amount;
-      this.hitFlash = 0.12;
-      if (this.health <= 0) {
-        this.dead = true;
-        scene.gold += this.reward;
-        scene.effects.push(new BurstEffect(this.x, this.y, this.radius + 16, 0xffd15c, 0.28));
-        scene.addFloatingText(`+${this.reward}`, this.x, this.y - 22, 0x7b5600, 0.75, 15);
-      }
-    }
-
-    applySlow(amount, duration) {
-      this.slowAmount = Math.max(this.slowAmount, amount);
-      this.slowTimer = Math.max(this.slowTimer, duration);
-    }
-
-    leak(scene) {
-      if (this.leaked) return;
-      this.leaked = true;
-      scene.baseHealth -= this.baseDamage;
-      if (this.stealGold) scene.gold = Math.max(0, scene.gold - this.stealGold);
-      scene.effects.push(new BurstEffect(500, 548, 44, 0xff9c9c, 0.35));
-      scene.addFloatingText(`-${this.baseDamage} base`, 500, 500, 0xa32323, 0.9, 16);
-      if (scene.baseHealth <= 0) {
-        scene.baseHealth = 0;
-        scene.state = "defeat";
-      }
-    }
-  }
-
-  class Tower {
-    constructor(typeKey, spotIndex) {
-      this.typeKey = typeKey;
-      this.config = TOWER_TYPES[typeKey];
-      this.spotIndex = spotIndex;
-      this.x = BUILD_SPOTS[spotIndex].x;
-      this.y = BUILD_SPOTS[spotIndex].y;
-      this.cooldown = 0.2;
-      this.level = 1;
-    }
-    range() { return this.config.range * (this.level > 1 ? 1.08 : 1); }
-    damage() { return this.config.damage * (this.level > 1 ? 1.35 : 1); }
-    upgradeCost() { return Math.round(this.config.cost * 0.7); }
-    update(dt, scene) {
-      this.cooldown -= dt;
-      if (this.cooldown > 0) return;
-      const target = scene.findTowerTarget(this.x, this.y, this.range());
-      if (!target) return;
-      this.cooldown = this.config.cooldown;
-      scene.projectiles.push(new Projectile(this.x, this.y - 24, target, this.config.projectileSpeed, this.damage(), this.config.color, this.typeKey === "cannon" ? 8 : 5, this.config.splash, this.config.slow, this.config.slowDuration));
-    }
-  }
-
-  class Projectile {
-    constructor(x, y, target, speed, damage, color, radius, splash, slow, slowDuration) {
-      Object.assign(this, { x, y, target, speed, damage, color, radius, splash, slow, slowDuration });
-      this.prevX = x;
-      this.prevY = y;
-      this.dead = false;
-    }
-    update(dt, scene) {
-      if (!this.target || this.target.dead || this.target.leaked) {
-        this.dead = true;
-        return;
-      }
-      this.prevX = this.x;
-      this.prevY = this.y;
-      const dx = this.target.x - this.x;
-      const dy = this.target.y - this.y;
-      const mag = Math.hypot(dx, dy) || 1;
-      const step = this.speed * dt;
-      if (step >= mag) {
-        this.x = this.target.x;
-        this.y = this.target.y;
-        this.hit(scene);
-      } else {
-        this.x += dx / mag * step;
-        this.y += dy / mag * step;
-      }
-    }
-    hit(scene) {
-      if (this.splash > 0) {
-        for (const enemy of scene.enemies) {
-          if (!enemy.dead && !enemy.leaked && dist(this.x, this.y, enemy.x, enemy.y) <= this.splash) enemy.takeDamage(this.damage, scene);
-        }
-        scene.effects.push(new BurstEffect(this.x, this.y, this.splash, 0xe79855, 0.32));
-      } else {
-        this.target.takeDamage(this.damage, scene);
-        if (this.slow > 0) this.target.applySlow(this.slow, this.slowDuration);
-        scene.effects.push(new BurstEffect(this.x, this.y, 20, this.color, 0.18));
-      }
-      this.dead = true;
-    }
-  }
-
-  class BurstEffect {
-    constructor(x, y, radius, color, duration = 0.25) {
-      Object.assign(this, { x, y, radius, color, duration, life: duration, dead: false });
-    }
-    update(dt) {
-      this.life -= dt;
-      if (this.life <= 0) this.dead = true;
-    }
-  }
-
-  class Beam {
-    constructor(x, y, dx, dy, length, duration) {
-      Object.assign(this, { x, y, dx, dy, length, duration, life: duration, dead: false });
-    }
-    update(dt) {
-      this.life -= dt;
-      if (this.life <= 0) this.dead = true;
-    }
-  }
-
-  class PiggyRushScene extends Phaser.Scene {
-    constructor() {
-      super("PiggyRush");
-    }
-
-    create() {
-      this.g = this.add.graphics();
-      this.input.addPointer(8);
-      this.input.topOnly = false;
-      this.scale.on("resize", () => this.onResize());
-      this.onResize();
-      this.createTextObjects();
-      this.installInput();
-      this.computePath();
-      this.resetGame();
-    }
-
-    createTextObjects() {
-      const font = '"Trebuchet MS", Arial, sans-serif';
-      this.texts = {
-        base: this.add.text(0, 0, "", { fontFamily: font, fontSize: "18px", fontStyle: "bold", color: "#9b3246" }).setOrigin(0.5),
-        gold: this.add.text(0, 0, "", { fontFamily: font, fontSize: "18px", fontStyle: "bold", color: "#85600a" }).setOrigin(0.5),
-        wave: this.add.text(0, 0, "", { fontFamily: font, fontSize: "18px", fontStyle: "bold", color: "#274f2e" }).setOrigin(0.5),
-        waveBtn: this.add.text(0, 0, "", { fontFamily: font, fontSize: "15px", fontStyle: "bold", color: "#fff8dc" }).setOrigin(0.5),
-        pauseBtn: this.add.text(0, 0, "", { fontFamily: font, fontSize: "15px", fontStyle: "bold", color: "#fff8dc" }).setOrigin(0.5),
-        restartBtn: this.add.text(0, 0, "Restart", { fontFamily: font, fontSize: "15px", fontStyle: "bold", color: "#fff8dc" }).setOrigin(0.5),
-        p1Label: this.add.text(0, 0, "", { fontFamily: font, fontSize: "15px", fontStyle: "bold", color: "#fff9df", stroke: "#3a2a1c", strokeThickness: 3 }).setOrigin(0.5).setAngle(90),
-        p2Label: this.add.text(0, 0, "", { fontFamily: font, fontSize: "15px", fontStyle: "bold", color: "#fff9df", stroke: "#3a2a1c", strokeThickness: 3 }).setOrigin(0.5).setAngle(-90),
-        p1Ability: this.add.text(0, 0, "", { fontFamily: font, fontSize: "13px", fontStyle: "bold", color: "#fff9df" }).setOrigin(0.5).setAngle(90),
-        p2Ability: this.add.text(0, 0, "", { fontFamily: font, fontSize: "13px", fontStyle: "bold", color: "#fff9df" }).setOrigin(0.5).setAngle(-90),
-        title: this.add.text(0, 0, "", { fontFamily: font, fontSize: "46px", fontStyle: "bold", color: "#573b22" }).setOrigin(0.5),
-        sub1: this.add.text(0, 0, "", { fontFamily: font, fontSize: "20px", fontStyle: "bold", color: "#38512a" }).setOrigin(0.5),
-        sub2: this.add.text(0, 0, "", { fontFamily: font, fontSize: "16px", fontStyle: "bold", color: "#6a5739" }).setOrigin(0.5),
-        sub3: this.add.text(0, 0, "", { fontFamily: font, fontSize: "16px", fontStyle: "bold", color: "#6a5739" }).setOrigin(0.5),
-        sub4: this.add.text(0, 0, "", { fontFamily: font, fontSize: "16px", fontStyle: "bold", color: "#6a5739" }).setOrigin(0.5)
-      };
-      this.menuTexts = [];
-      this.floaters = [];
-    }
-
-    installInput() {
-      this.activePointers = new Map();
-      this.joysticks = [
-        { active: false, pointerId: null, vector: { x: 0, y: 0 }, start: { x: 0, y: 0 }, current: { x: 0, y: 0 } },
-        { active: false, pointerId: null, vector: { x: 0, y: 0 }, start: { x: 0, y: 0 }, current: { x: 0, y: 0 } }
-      ];
-      this.keys = new Set();
-      this.input.on("pointerdown", pointer => this.pointerDown(pointer));
-      this.input.on("pointermove", pointer => this.pointerMove(pointer));
-      this.input.on("pointerup", pointer => this.pointerUp(pointer));
-      this.input.on("pointerupoutside", pointer => this.pointerUp(pointer));
-            this.input.on("pointercancel", pointer => this.releasePointer(this.pointerId(pointer)));
-      window.addEventListener("pointercancel", event => this.releasePointer(event.pointerId));
-      window.addEventListener("keydown", event => {
-        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "Enter"].includes(event.key)) event.preventDefault();
-        if (event.key === "p" || event.key === "P") this.togglePause();
-        if (event.key === "r" || event.key === "R") this.resetGame();
-        if (event.key === "f" || event.key === "F") this.tryHeroAbility(0);
-      
-        if (event.key === "/" || event.key === "Enter") this.tryHeroAbility(1);
-        if (event.key === " ") this.startWave();
-        this.keys.add(event.key);
-      });
-      window.addEventListener("keyup", event => this.keys.delete(event.key));
-    }
-
-    onResize() {
-      this.gameWidth = this.scale.width || window.innerWidth;
-      this.gameHeight = this.scale.height || window.innerHeight;
-      this.viewScale = Math.min(this.gameWidth / WORLD.width, this.gameHeight / WORLD.height);
-      this.viewX = (this.gameWidth - WORLD.width * this.viewScale) / 2;
-      this.viewY = (this.gameHeight - WORLD.height * this.viewScale) / 2;
-    }
-
-    computePath() {
-      this.pathSegments = [];
-      this.pathLength = 0;
-      for (let i = 0; i < PATH.length - 1; i++) {
-        const a = PATH[i];
-        const b = PATH[i + 1];
-        const length = dist(a.x, a.y, b.x, b.y);
-        this.pathSegments.push({ a, b, length, start: this.pathLength });
-        this.pathLength += length;
-      }
-    }
-
-    resetGame() {
-      this.state = "start";
-      this.gold = 220;
-      this.baseHealth = 25;
-      this.waveIndex = 0;
-      this.waveActive = false;
-      this.waveGroups = [];
-      this.waveClearDelay = 0;
-      this.towers = [];
-      this.enemies = [];
-      this.projectiles = [];
-      this.effects = [];
-      this.beams = [];
-      this.heroes = HERO_CONFIGS.map(config => new Hero(config));
-      this.selectedSpot = null;
-      this.closeMenu();
-      this.clearFloaters();
-      this.addFloatingText("Tap Start", WORLD.width / 2, 185, 0x375d2a, 1.6, 24);
-    }
-
-    sx(x) { return this.viewX + x * this.viewScale; }
-    sy(y) { return this.viewY + y * this.viewScale; }
-    sr(r) { return r * this.viewScale; }
-    sw(point) { return { x: (point.x - this.viewX) / this.viewScale, y: (point.y - this.viewY) / this.viewScale }; }
-
-    controlRects() {
-      const midY = this.gameHeight / 2;
-      const edge = Math.max(86, Math.min(112, this.gameWidth * 0.105));
-      const offset = Math.max(92, Math.min(138, this.gameHeight * 0.2));
-      return [
-        { joystick: { x: edge, y: midY + offset, r: UI.joystickRadius }, ability: { x: edge, y: midY - offset * 0.6, r: UI.abilityRadius }, rotation: 90 },
-        { joystick: { x: this.gameWidth - edge, y: midY - offset, r: UI.joystickRadius }, ability: { x: this.gameWidth - edge, y: midY + offset * 0.6, r: UI.abilityRadius }, rotation: -90 }
-      ];
-    }
-
-    topButtons() {
-      const y = 12;
-      const right = this.gameWidth - 16;
-      return {
-        restart: { x: right - 86, y, w: 86, h: 48 },
-        pause: { x: right - 180, y, w: 86, h: 48 },
-        wave: { x: right - 310, y, w: 122, h: 48 }
-      };
-    }
-
-    pointerId(pointer) {
-      return pointer.pointerId || pointer.id;
-    }
-
-    hitCircle(point, circle) {
-      return distSq(point.x, point.y, circle.x, circle.y) <= circle.r * circle.r;
-    }
-
-    hitRect(point, rect) {
-      return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
-    }
-
-    pointerDown(pointer) {
-      const id = this.pointerId(pointer);
-      const point = { x: pointer.x, y: pointer.y };
-      if (this.handleTopButton(point)) {
-        this.activePointers.set(id, { type: "button", start: point, last: point, moved: false });
-        return;
-      }
-      const player = point.x < this.gameWidth / 2 ? 0 : 1;
-      const controls = this.controlRects()[player];
-      if (this.hitCircle(point, controls.ability)) {
-        this.tryHeroAbility(player);
-        this.activePointers.set(id, { type: "ability", player, start: point, last: point, moved: false });
-        return;
-      }
-      if (this.hitCircle(point, controls.joystick) && !this.joysticks[player].active) {
-        const joy = this.joysticks[player];
-        joy.active = true;
-        joy.pointerId = id;
-        joy.start = { x: controls.joystick.x, y: controls.joystick.y };
-        joy.current = point;
-        this.updateJoystick(player, point);
-        this.activePointers.set(id, { type: "joystick", player, start: point, last: point, moved: false });
-        return;
-      }
-      this.activePointers.set(id, { type: "tap", player, start: point, last: point, moved: false });
-    }
-
-    pointerMove(pointer) {
-      const id = this.pointerId(pointer);
-      const state = this.activePointers.get(id);
-      if (!state) return;
-      const point = { x: pointer.x, y: pointer.y };
-      state.last = point;
-      if (dist(state.start.x, state.start.y, point.x, point.y) > 10) state.moved = true;
-      if (state.type === "joystick") this.updateJoystick(state.player, point);
-    }
-
-    pointerUp(pointer) {
-      const id = this.pointerId(pointer);
-      const state = this.activePointers.get(id);
-      if (!state) return;
-      if (state.type === "joystick") {
-        const joy = this.joysticks[state.player];
-        joy.active = false;
-        joy.pointerId = null;
-        joy.vector = { x: 0, y: 0 };
-      } else if (state.type === "tap" && !state.moved) {
-        this.handleWorldTap(state.last);
-      }
-      this.activePointers.delete(id);
-    }
-    
-    releasePointer(id) {
-      const state = this.activePointers.get(id);
-      if (!state) return;
-      if (state.type === "joystick") {
-        const joy = this.joysticks[state.player];
-        joy.active = false;
-        joy.pointerId = null;
-        joy.vector = { x: 0, y: 0 };
-      }
-      this.activePointers.delete(id);
-    }
-
-    updateJoystick(player, point) {
-      const joy = this.joysticks[player];
-      const dx = point.x - joy.start.x;
-      const dy = point.y - joy.start.y;
-      const mag = Math.hypot(dx, dy);
-      const max = UI.joystickRadius;
-      const scale = mag > max ? max / mag : 1;
-      joy.current = { x: joy.start.x + dx * scale, y: joy.start.y + dy * scale };
-      joy.vector = { x: mag > 4 ? (dx * scale) / max : 0, y: mag > 4 ? (dy * scale) / max : 0 };
-    }
-
-    heroVector(player) {
-      const key = { x: 0, y: 0 };
-      if (player === 0) {
-        if (this.keys.has("a") || this.keys.has("A")) key.x -= 1;
-        if (this.keys.has("d") || this.keys.has("D")) key.x += 1;
-        if (this.keys.has("w") || this.keys.has("W")) key.y -= 1;
-        if (this.keys.has("s") || this.keys.has("S")) key.y += 1;
-      } else {
-        if (this.keys.has("ArrowLeft")) key.x -= 1;
-        if (this.keys.has("ArrowRight")) key.x += 1;
-        if (this.keys.has("ArrowUp")) key.y -= 1;
-        if (this.keys.has("ArrowDown")) key.y += 1;
-      }
-      const mag = Math.hypot(key.x, key.y);
-      if (mag > 0) return { x: key.x / mag, y: key.y / mag };
-      return this.joysticks[player].vector;
-    }
-
-    handleTopButton(point) {
-      const buttons = this.topButtons();
-      if (this.hitRect(point, buttons.restart)) {
-        this.resetGame();
-        return true;
-      }
-      if (this.hitRect(point, buttons.pause)) {
-        this.togglePause();
-        return true;
-      }
-      if (this.hitRect(point, buttons.wave)) {
-        this.startWave();
-        return true;
-      }
-      if (this.state === "start" || this.state === "victory" || this.state === "defeat") {
-        const box = this.overlayBox();
-        if (this.hitRect(point, box)) {
-          if (this.state === "start") this.startWave();
-          else this.resetGame();
-          return true;
-        }
-      }
-      return false;
-    }
-
-    handleWorldTap(point) {
-      if (this.state === "paused") return;
-      if (this.state === "start") {
-        this.startWave();
-        return;
-      }
-      if (this.state === "victory" || this.state === "defeat") {
-        this.resetGame();
-        return;
-      }
-      if (this.buildMenu) {
-        for (const item of this.buildMenu.items) {
-          if (this.hitRect(point, item.rect)) {
-            if (item.enabled) item.action();
-            else {
-              const world = this.sw(point);
-              this.addFloatingText("Need gold", world.x, world.y, 0xb22a2a, 0.8, 16);
-            }
-            return;
-          }
-        }
-      }
-      const world = this.sw(point);
-      let spotIndex = -1;
-      for (let i = 0; i < BUILD_SPOTS.length; i++) {
-        const spot = BUILD_SPOTS[i];
-        if (dist(world.x, world.y, spot.x, spot.y) <= 38) {
-          spotIndex = i;
-          break;
-        }
-      }
-      if (spotIndex >= 0) this.openBuildMenu(spotIndex);
-      else this.closeMenu();
-    }
-
-    openBuildMenu(spotIndex) {
-      this.closeMenu();
-      this.selectedSpot = spotIndex;
-      const existing = this.towers.find(t => t.spotIndex === spotIndex);
-      const spot = BUILD_SPOTS[spotIndex];
-      const spotScreen = { x: this.sx(spot.x), y: this.sy(spot.y) };
-      const w = existing ? 190 : 286;
-      const h = existing ? 118 : 124;
-      const x = clamp(spotScreen.x - w / 2, 10, this.gameWidth - w - 10);
-      const y = clamp(spotScreen.y - h - 36, 74, this.gameHeight - h - 18);
-      const items = [];
-      if (existing) {
-        const cost = existing.upgradeCost();
-        items.push({
-          rect: { x: x + 18, y: y + 50, w: w - 36, h: 48 },
-          label: existing.level < 2 ? `Upgrade ${cost}` : "Max level",
-          color: 0x6a8d3d,
-          enabled: existing.level < 2 && this.gold >= cost,
-          action: () => {
-            if (existing.level >= 2 || this.gold < cost) return;
-            this.gold -= cost;
-            existing.level += 1;
-            this.addFloatingText("Upgraded", existing.x, existing.y - 54, 0x314f1d, 1, 16);
-            this.closeMenu();
-          }
-        });
-      } else {
-        ["archer", "cannon", "magic"].forEach((key, index) => {
-          const type = TOWER_TYPES[key];
-          items.push({
-            rect: { x: x + 16 + index * 88, y: y + 52, w: 82, h: 50 },
-            label: `${type.short} ${type.cost}`,
-            color: type.dark,
-            enabled: this.gold >= type.cost,
-            action: () => this.buildTower(key, spotIndex)
-          });
-        });
-      }
-      this.buildMenu = { x, y, w, h, title: existing ? `${existing.config.name} L${existing.level}` : "Build tower", items };
-      this.menuTexts.push(this.add.text(x + w / 2, y + 22, this.buildMenu.title, { fontFamily: "Trebuchet MS, Arial", fontSize: "16px", fontStyle: "bold", color: "#4b351f" }).setOrigin(0.5));
-      for (const item of items) {
-        this.menuTexts.push(this.add.text(item.rect.x + item.rect.w / 2, item.rect.y + item.rect.h / 2, item.label, { fontFamily: "Trebuchet MS, Arial", fontSize: "14px", fontStyle: "bold", color: "#fff8dc" }).setOrigin(0.5));
-      }
-    }
-
-    closeMenu() {
-      this.selectedSpot = null;
-      this.buildMenu = null;
-      if (this.menuTexts) {
-        for (const text of this.menuTexts) text.destroy();
-        this.menuTexts = [];
-      }
-    }
-
-    buildTower(typeKey, spotIndex) {
-      const type = TOWER_TYPES[typeKey];
-      if (this.gold < type.cost || this.towers.some(t => t.spotIndex === spotIndex)) return;
-      this.gold -= type.cost;
-      const tower = new Tower(typeKey, spotIndex);
-      this.towers.push(tower);
-      this.effects.push(new BurstEffect(tower.x, tower.y, 42, 0xfff0a6, 0.34));
-      this.addFloatingText(type.name, tower.x, tower.y - 48, type.dark, 0.9, 15);
-      this.closeMenu();
-      if (this.state === "start") this.state = "playing";
-    }
-
-    startWave() {
-      if (this.state === "paused") {
-        this.state = "playing";
-        return;
-      }
-      if (this.state === "victory" || this.state === "defeat") {
-        this.resetGame();
-        return;
-      }
-      if (this.waveActive || this.waveIndex >= WAVES.length) return;
-      if (this.state === "start") this.state = "playing";
-      const wave = WAVES[this.waveIndex];
-      this.waveGroups = wave.groups.map(group => ({ ...group, spawned: 0, timer: -group.delay }));
-      this.waveActive = true;
-      this.waveClearDelay = 0;
-      this.addFloatingText(`Wave ${this.waveIndex + 1}: ${wave.name}`, WORLD.width / 2, 100, 0x344f2e, 1.8, 24);
-    }
-
-    updateWave(dt) {
-      if (!this.waveActive) return;
-      let done = true;
-      for (const group of this.waveGroups) {
-        if (group.spawned >= group.count) continue;
-        done = false;
-        group.timer += dt;
-        while (group.timer >= group.interval && group.spawned < group.count) {
-          group.timer -= group.interval;
-          group.spawned += 1;
-          this.enemies.push(new Enemy(group.type, this));
-        }
-      }
-      if (done && this.enemies.length === 0) {
-        this.waveClearDelay += dt;
-        if (this.waveClearDelay > 1) {
-          this.waveActive = false;
-          this.waveIndex += 1;
-          this.gold += 35;
-          this.addFloatingText("+35 wave clear", WORLD.width / 2, 126, 0x795314, 1.4, 20);
-          if (this.waveIndex >= WAVES.length) this.state = "victory";
-        }
-      }
-    }
-
-    togglePause() {
-      if (this.state === "playing") this.state = "paused";
-      else if (this.state === "paused") this.state = "playing";
-    }
-
-    tryHeroAbility(player) {
-      if (this.state === "start") this.state = "playing";
-      if (this.state !== "playing") return;
-      this.heroes[player].cast(this);
-    }
-
-    findEnemyInRange(x, y, range) {
-      let best = null;
-      let bestDistance = Infinity;
-      for (const enemy of this.enemies) {
-        if (enemy.dead || enemy.leaked) continue;
-        const d = distSq(x, y, enemy.x, enemy.y);
-        if (d <= range * range && d < bestDistance) {
-          best = enemy;
-          bestDistance = d;
-        }
-      }
-      return best;
-    }
-
-    findTowerTarget(x, y, range) {
-      let best = null;
-      let bestProgress = -Infinity;
-      for (const enemy of this.enemies) {
-        if (enemy.dead || enemy.leaked || distSq(x, y, enemy.x, enemy.y) > range * range) continue;
-        if (enemy.pathDistance > bestProgress) {
-          best = enemy;
-          bestProgress = enemy.pathDistance;
-        }
-      }
-      return best;
-    }
-
-    addFloatingText(text, x, y, color, duration, size) {
-      const obj = this.add.text(this.sx(x), this.sy(y), text, {
-        fontFamily: "Trebuchet MS, Arial",
-        fontSize: `${size}px`,
-        fontStyle: "bold",
-        color: `#${color.toString(16).padStart(6, "0")}`,
-        stroke: "#fff8da",
-        strokeThickness: 4
-      }).setOrigin(0.5);
-      this.floaters.push({ obj, x, y, life: duration, duration });
-    }
-
-    clearFloaters() {
-      if (!this.floaters) return;
-      for (const f of this.floaters) f.obj.destroy();
-      this.floaters = [];
-    }
-
-    update(time, deltaMs) {
-      const dt = Math.min(0.033, deltaMs / 1000);
-      if (this.state === "playing") {
-        this.updateWave(dt);
-        for (let i = 0; i < this.heroes.length; i++) this.heroes[i].update(dt, this, this.heroVector(i));
-        for (const enemy of this.enemies) enemy.update(dt, this);
-        for (const tower of this.towers) tower.update(dt, this);
-        for (const projectile of this.projectiles) projectile.update(dt, this);
-      }
-      for (const effect of this.effects) effect.update(dt);
-      for (const beam of this.beams) beam.update(dt);
-      for (const floater of this.floaters) {
-        floater.life -= dt;
-        floater.y -= dt * 28;
-        floater.obj.setPosition(this.sx(floater.x), this.sy(floater.y)).setAlpha(clamp(floater.life / floater.duration, 0, 1));
-      }
-      this.enemies = this.enemies.filter(e => !e.dead && !e.leaked);
-      this.projectiles = this.projectiles.filter(p => !p.dead);
-      this.effects = this.effects.filter(e => !e.dead);
-      this.beams = this.beams.filter(b => !b.dead);
-      for (const floater of this.floaters.filter(f => f.life <= 0)) floater.obj.destroy();
-      this.floaters = this.floaters.filter(f => f.life > 0);
-      this.draw();
-      this.updateTextLayout();
-    }
-
-    roundedRect(x, y, w, h, radius, fill, stroke, lineWidth = 2) {
-      this.g.fillStyle(fill, 1);
-      this.g.fillRoundedRect(x, y, w, h, radius);
-      if (stroke !== undefined) {
-        this.g.lineStyle(lineWidth, stroke, 1);
-        this.g.strokeRoundedRect(x, y, w, h, radius);
-      }
-    }
-
-    draw() {
-      const g = this.g;
-      g.clear();
-      g.fillGradientStyle(0x9ddf67, 0x9ddf67, 0x56ad4d, 0x56ad4d, 1);
-      g.fillRect(0, 0, this.gameWidth, this.gameHeight);
-      this.drawWorld();
-      this.drawHud();
-      this.drawControls();
-      this.drawBuildMenu();
-      this.drawOverlay();
-    }
-
-    drawWorld() {
-      const g = this.g;
-      for (let i = 0; i < 34; i++) {
-        g.fillStyle(i % 2 ? 0x2e7f34 : 0xfff7d4, 0.12);
-        g.fillEllipse(this.sx((i * 223) % 1000), this.sy(85 + (i * 91) % 480), this.sr(26), this.sr(9));
-      }
-      this.drawPathStroke(0x8f6237, 68);
-      this.drawPathStroke(0xd8a05c, 58);
-      this.drawPathStroke(0xefc680, 44);
-      this.drawEntranceSign();
-      this.drawPiggyBase();
-      this.drawBuildSpots();
-      this.drawTowers();
-      this.drawEnemies();
-      this.drawProjectiles();
-      this.drawBeams();
-      this.drawHeroes();
-      this.drawEffects();
-    }
-
-    drawPathStroke(color, width) {
-      const g = this.g;
-      g.lineStyle(this.sr(width), color, 1);
-      for (let i = 0; i < PATH.length - 1; i++) {
-        g.lineBetween(this.sx(PATH[i].x), this.sy(PATH[i].y), this.sx(PATH[i + 1].x), this.sy(PATH[i + 1].y));
-      }
-    }
-
-    drawEntranceSign() {
-      const g = this.g;
-      const x = this.sx(560);
-      const y = this.sy(45);
-      g.fillStyle(0x765029, 1);
-      g.fillRect(x - this.sr(6), y, this.sr(12), this.sr(55));
-      this.roundedRect(x - this.sr(38), y - this.sr(30), this.sr(76), this.sr(34), this.sr(8), 0xf7d894, 0x765029, this.sr(4));
-    }
-
-    drawPiggyBase() {
-      const g = this.g;
-      const x = this.sx(500);
-      const y = this.sy(548);
-      g.fillStyle(0x674622, 0.22);
-      g.fillEllipse(x, y + this.sr(34), this.sr(148), this.sr(30));
-      g.fillStyle(0xf190aa, 1);
-      g.lineStyle(this.sr(5), 0x9d4265, 1);
-      g.fillEllipse(x, y, this.sr(132), this.sr(86));
-      g.strokeEllipse(x, y, this.sr(132), this.sr(86));
-      g.fillStyle(0xf6adc0, 1);
-      g.fillEllipse(x + this.sr(60), y, this.sr(42), this.sr(32));
-      g.fillStyle(0x9d4265, 1);
-      g.fillCircle(x + this.sr(68), y - this.sr(3), this.sr(4));
-      g.fillCircle(x + this.sr(54), y - this.sr(3), this.sr(4));
-      g.fillRect(x - this.sr(34), y - this.sr(45), this.sr(62), this.sr(8));
-      g.fillStyle(0x66304a, 1);
-      g.fillCircle(x + this.sr(30), y - this.sr(15), this.sr(6));
-    }
-
-    drawBuildSpots() {
-      const g = this.g;
-      BUILD_SPOTS.forEach((spot, index) => {
-        if (this.towers.some(t => t.spotIndex === index)) return;
-        const x = this.sx(spot.x);
-        const y = this.sy(spot.y);
-        g.fillStyle(0x573919, 0.22);
-        g.fillEllipse(x, y + this.sr(20), this.sr(68), this.sr(20));
-        g.fillStyle(0xf7dd9b, 1);
-        g.lineStyle(this.sr(4), 0x8b643a, 1);
-        g.fillCircle(x, y, this.sr(UI.spotRadius));
-        g.strokeCircle(x, y, this.sr(UI.spotRadius));
-        this.drawPlus(x, y, this.sr(10), 0x7d5a34, this.sr(4));
-      });
-    }
-
-    drawTowers() {
-      const g = this.g;
-      for (const tower of this.towers) {
-        const x = this.sx(tower.x);
-        const y = this.sy(tower.y);
-        if (this.selectedSpot === tower.spotIndex) {
-          g.fillStyle(0xffffff, 0.1);
-          g.lineStyle(this.sr(3), 0xffffff, 0.7);
-          g.fillCircle(x, y, this.sr(tower.range()));
-          g.strokeCircle(x, y, this.sr(tower.range()));
-        }
-        g.fillStyle(0x4c3318, 0.25);
-        g.fillEllipse(x, y + this.sr(25), this.sr(70), this.sr(22));
-        g.fillStyle(0x8f6838, 1);
-        g.fillRect(x - this.sr(18), y - this.sr(8), this.sr(36), this.sr(38));
-        g.fillStyle(tower.config.dark, 1);
-        g.fillTriangle(x - this.sr(30), y - this.sr(10), x, y - this.sr(40), x + this.sr(30), y - this.sr(10));
-        this.roundedRect(x - this.sr(22), y - this.sr(9), this.sr(44), this.sr(28), this.sr(6), tower.config.color, undefined);
-        if (tower.level > 1) g.fillStyle(0xffd95b, 1).fillTriangle(x - this.sr(13), y - this.sr(45), x, y - this.sr(58), x + this.sr(13), y - this.sr(45));
-      }
-    }
-
-    drawEnemies() {
-      const g = this.g;
-      for (const enemy of [...this.enemies].sort((a, b) => a.y - b.y)) {
-        const x = this.sx(enemy.x);
-        const y = this.sy(enemy.y);
-        const r = this.sr(enemy.radius);
-        g.fillStyle(0x412716, 0.24);
-        g.fillEllipse(x, y + r + this.sr(10), r * 2.2, this.sr(14));
-        g.fillStyle(enemy.hitFlash > 0 ? 0xfff2c3 : enemy.color, 1);
-        g.lineStyle(this.sr(3), enemy.dark, 1);
-        g.fillCircle(x, y, r);
-        g.strokeCircle(x, y, r);
-        if (enemy.typeKey === "brute") this.roundedRect(x - r * 0.6, y - r * 0.25, r * 1.2, r * 1.2, this.sr(5), 0xd7d9df, 0x59606b, this.sr(2));
-        else if (enemy.typeKey === "thief") g.fillStyle(0xfff0a6, 1).fillCircle(x, y, r * 0.62);
-        else {
-          g.fillStyle(enemy.dark, 1);
-          g.fillCircle(x - r * 0.35, y - r * 0.2, this.sr(3));
-          g.fillCircle(x + r * 0.35, y - r * 0.2, this.sr(3));
-        }
-        if (enemy.slowTimer > 0) {
-          g.lineStyle(this.sr(3), 0x95dfff, 0.85);
-          g.strokeCircle(x, y, r + this.sr(5));
-        }
-        this.drawBar(x - r - this.sr(4), y - r - this.sr(16), r * 2 + this.sr(8), this.sr(6), enemy.health / enemy.maxHealth, 0xdc4b42);
-      }
-    }
-
-    drawProjectiles() {
-      const g = this.g;
-      for (const p of this.projectiles) {
-        g.lineStyle(this.sr(p.radius), p.color, 1);
-        g.lineBetween(this.sx(p.prevX), this.sy(p.prevY), this.sx(p.x), this.sy(p.y));
-        g.fillStyle(p.color, 1);
-        g.fillCircle(this.sx(p.x), this.sy(p.y), this.sr(p.radius));
-      }
-    }
-
-    drawBeams() {
-      const g = this.g;
-      for (const beam of this.beams) {
-        const alpha = clamp(beam.life / beam.duration, 0, 1);
-        g.lineStyle(this.sr(16), 0xffe56a, alpha);
-        g.lineBetween(this.sx(beam.x), this.sy(beam.y), this.sx(beam.x + beam.dx * beam.length), this.sy(beam.y + beam.dy * beam.length));
-        g.lineStyle(this.sr(6), 0xfff8c7, alpha);
-        g.lineBetween(this.sx(beam.x), this.sy(beam.y), this.sx(beam.x + beam.dx * beam.length), this.sy(beam.y + beam.dy * beam.length));
-      }
-    }
-
-    drawHeroes() {
-      const g = this.g;
-      for (const hero of [...this.heroes].sort((a, b) => a.y - b.y)) {
-        const x = this.sx(hero.x);
-        const y = this.sy(hero.y);
-        const alpha = hero.down ? 0.58 : 1;
-        g.fillStyle(0x412716, 0.25 * alpha);
-        g.fillEllipse(x, y + this.sr(23), this.sr(52), this.sr(16));
-        g.fillStyle(hero.hitFlash > 0 ? 0xfff2c3 : hero.color, alpha);
-        g.lineStyle(this.sr(4), 0x60352c, alpha);
-        g.fillCircle(x, y, this.sr(23));
-        g.strokeCircle(x, y, this.sr(23));
-        g.fillStyle(hero.trim, alpha);
-        if (hero.id === 0) {
-          g.fillTriangle(x - this.sr(17), y - this.sr(20), x, y - this.sr(40), x + this.sr(17), y - this.sr(20));
-          g.fillRect(x + this.sr(17), y - this.sr(4), this.sr(20), this.sr(8));
-        } else {
-          g.fillTriangle(x - this.sr(17), y - this.sr(8), x, y - this.sr(42), x + this.sr(17), y - this.sr(8));
-          g.fillCircle(x + this.sr(18), y - this.sr(10), this.sr(6));
-        }
-        if (hero.down) {
-          g.lineStyle(this.sr(5), 0xfff5cc, 1);
-          g.strokeCircle(x, y, this.sr(34));
-        }
-        this.drawBar(x - this.sr(28), y - this.sr(42), this.sr(56), this.sr(8), hero.health / hero.maxHealth, 0x48bc5f);
-      }
-    }
-
-    drawEffects() {
-      const g = this.g;
-      for (const effect of this.effects) {
-        const t = 1 - effect.life / effect.duration;
-        g.lineStyle(this.sr(6 * (1 - t) + 2), effect.color, clamp(effect.life / effect.duration, 0, 1) * 0.7);
-        g.strokeCircle(this.sx(effect.x), this.sy(effect.y), this.sr(effect.radius * (0.25 + t * 0.75)));
-      }
-    }
-
-    drawBar(x, y, w, h, pct, color) {
-      this.g.fillStyle(0x412616, 0.55);
-      this.g.fillRoundedRect(x, y, w, h, h / 2);
-      this.g.fillStyle(color, 1);
-      this.g.fillRoundedRect(x + 1, y + 1, Math.max(0, (w - 2) * clamp(pct, 0, 1)), h - 2, h / 2);
-    }
-
-    drawPlus(x, y, size, color, width) {
-      this.g.lineStyle(width, color, 1);
-      this.g.lineBetween(x - size, y, x + size, y);
-      this.g.lineBetween(x, y - size, x, y + size);
-    }
-
-    drawHud() {
-      const buttons = this.topButtons();
-      this.roundedRect(16, 12, 118, 48, 16, 0xfff8da, 0x705b34, 2);
-      this.roundedRect(146, 12, 118, 48, 16, 0xfff8da, 0x705b34, 2);
-      const centerW = Math.min(520, this.gameWidth - 260);
-      this.roundedRect(this.gameWidth / 2 - centerW / 2, 12, centerW, 48, 16, 0xfff8da, 0x705b34, 2);
-      this.drawButton(buttons.wave, this.waveActive ? 0x5d5b50 : 0x2d7f44);
-      this.drawButton(buttons.pause, this.state === "start" || this.state === "victory" || this.state === "defeat" ? 0x5d5b50 : 0x365e97);
-      this.drawButton(buttons.restart, 0x9f4936);
-    }
-
-    drawButton(rect, color) {
-      this.roundedRect(rect.x, rect.y, rect.w, rect.h, 14, color, 0xffffff, 2);
-    }
-
-    drawControls() {
-      const controls = this.controlRects();
-      const panelW = Math.min(250, Math.max(188, this.gameWidth * 0.24));
-      this.g.fillStyle(0xd34b4b, 0.08);
-      this.g.fillRect(0, 0, panelW, this.gameHeight);
-      this.g.fillStyle(0x4577d2, 0.08);
-      this.g.fillRect(this.gameWidth - panelW, 0, panelW, this.gameHeight);
-      this.g.lineStyle(3, 0xffffff, 0.18);
-      this.g.lineBetween(panelW, 76, panelW, this.gameHeight - 76);
-      this.g.lineBetween(this.gameWidth - panelW, 76, this.gameWidth - panelW, this.gameHeight - 76);
-      controls.forEach((zones, player) => {
-        const joy = this.joysticks[player];
-        this.g.fillStyle(0x1f3824, 0.26);
-        this.g.lineStyle(4, 0xffffff, 0.72);
-        this.g.fillCircle(zones.joystick.x, zones.joystick.y, zones.joystick.r);
-        this.g.strokeCircle(zones.joystick.x, zones.joystick.y, zones.joystick.r);
-        this.g.fillStyle(player === 0 ? 0xe35858 : 0x4f83df, 1);
-        this.g.lineStyle(4, 0xfff8dc, 1);
-        this.g.fillCircle(joy.active ? joy.current.x : zones.joystick.x, joy.active ? joy.current.y : zones.joystick.y, UI.joystickKnob);
-        this.g.strokeCircle(joy.active ? joy.current.x : zones.joystick.x, joy.active ? joy.current.y : zones.joystick.y, UI.joystickKnob);
-        const hero = this.heroes[player];
-        this.g.fillStyle(hero.down ? 0x505050 : player === 0 ? 0xc74d3f : 0x3f73d1, 1);
-        this.g.lineStyle(4, 0xfff8dc, 1);
-        this.g.fillCircle(zones.ability.x, zones.ability.y, zones.ability.r);
-        this.g.strokeCircle(zones.ability.x, zones.ability.y, zones.ability.r);
-        if (hero.abilityTimer > 0 || hero.down) {
-          this.g.fillStyle(0x1d1c18, 0.46);
-          this.g.slice(zones.ability.x, zones.ability.y, zones.ability.r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clamp(hero.abilityTimer / hero.abilityCooldown, 0, 1), true);
-          this.g.fillPath();
-        }
-      });
-    }
-
-    drawBuildMenu() {
-      if (!this.buildMenu) return;
-      this.roundedRect(this.buildMenu.x, this.buildMenu.y, this.buildMenu.w, this.buildMenu.h, 16, 0xfff8da, 0x8b643a, 3);
-      for (const item of this.buildMenu.items) this.drawButton(item.rect, item.enabled ? item.color : 0x888276);
-    }
-
-    overlayBox() {
-      const w = Math.min(620, this.gameWidth - 48);
-      const h = 250;
-      return { x: this.gameWidth / 2 - w / 2, y: this.gameHeight / 2 - h / 2, w, h };
-    }
-
-    drawOverlay() {
-      if (!["start", "paused", "victory", "defeat"].includes(this.state)) return;
-      this.g.fillStyle(0x293020, 0.4);
-      this.g.fillRect(0, 0, this.gameWidth, this.gameHeight);
-      const box = this.overlayBox();
-      this.roundedRect(box.x, box.y, box.w, box.h, 20, 0xfff8da, 0x8b643a, 4);
-    }
-
-    updateTextLayout() {
-      const buttons = this.topButtons();
-      const waveName = this.waveIndex >= WAVES.length ? "All waves clear" : `Wave ${this.waveIndex + 1}/${WAVES.length}: ${WAVES[this.waveIndex].name}`;
-      this.texts.base.setText(`Base ${this.baseHealth}`).setPosition(75, 36);
-      this.texts.gold.setText(`Gold ${this.gold}`).setPosition(205, 36);
-      this.texts.wave.setText(waveName).setPosition(this.gameWidth / 2, 36);
-      this.texts.waveBtn.setText(this.waveActive ? "Wave live" : this.state === "start" ? "Start" : "Next wave").setPosition(buttons.wave.x + buttons.wave.w / 2, buttons.wave.y + buttons.wave.h / 2);
-      this.texts.pauseBtn.setText(this.state === "paused" ? "Resume" : "Pause").setPosition(buttons.pause.x + buttons.pause.w / 2, buttons.pause.y + buttons.pause.h / 2);
-      this.texts.restartBtn.setPosition(buttons.restart.x + buttons.restart.w / 2, buttons.restart.y + buttons.restart.h / 2);
-      const controls = this.controlRects();
-      this.texts.p1Label.setText("P1 Penny Knight").setPosition(controls[0].joystick.x - 66, controls[0].joystick.y);
-      this.texts.p2Label.setText("P2 Coin Mage").setPosition(controls[1].joystick.x + 66, controls[1].joystick.y);
-      this.texts.p1Ability.setText(`SLAM\n${this.heroes[0].down ? "REV " + Math.ceil(this.heroes[0].reviveTimer) : this.heroes[0].abilityTimer > 0 ? Math.ceil(this.heroes[0].abilityTimer) + "s" : "READY"}`).setPosition(controls[0].ability.x, controls[0].ability.y);
-      this.texts.p2Ability.setText(`SPARK\n${this.heroes[1].down ? "REV " + Math.ceil(this.heroes[1].reviveTimer) : this.heroes[1].abilityTimer > 0 ? Math.ceil(this.heroes[1].abilityTimer) + "s" : "READY"}`).setPosition(controls[1].ability.x, controls[1].ability.y);
-      const showOverlay = ["start", "paused", "victory", "defeat"].includes(this.state);
-      for (const key of ["title", "sub1", "sub2", "sub3", "sub4"]) this.texts[key].setVisible(showOverlay);
-      if (showOverlay) {
-        const box = this.overlayBox();
-        const copy = {
-          start: ["PiggyRush", "Face-to-face co-op. Defend the middle lane.", "Players hold the left and right short edges.", "Controls face each player. Keyboard: WASD/F and arrows/Enter.", "Enemies cross the center from top to bottom."],
-          paused: ["Paused", "Tap Resume or press P.", "Players hold the left and right short edges.", "Controls face each player. Keyboard: WASD/F and arrows/Enter.", "Enemies cross the center from top to bottom."],
-          victory: ["Victory", "The piggy-bank kingdom is safe.", "Restart to play the 10-wave route again.", "", ""],
-          defeat: ["Defeat", "The raiders cracked the vault.", "Restart, rebuild, and guard the center lane.", "", ""]
-        }[this.state];
-        this.texts.title.setText(copy[0]).setPosition(this.gameWidth / 2, box.y + 66);
-        this.texts.sub1.setText(copy[1]).setPosition(this.gameWidth / 2, box.y + 115);
-        this.texts.sub2.setText(copy[2]).setPosition(this.gameWidth / 2, box.y + 154);
-        this.texts.sub3.setText(copy[3]).setPosition(this.gameWidth / 2, box.y + 181);
-        this.texts.sub4.setText(copy[4]).setPosition(this.gameWidth / 2, box.y + 208);
-      }
-    }
-  }
-
-  window.addEventListener("load", () => {
-    new Phaser.Game({
-      type: Phaser.AUTO,
-      parent: "game",
-      backgroundColor: "#7cc957",
-      scale: {
-        mode: Phaser.Scale.RESIZE,
-        autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: window.innerWidth,
-        height: window.innerHeight
-      },
-      input: {
-        activePointers: 10
-      },
-      scene: PiggyRushScene
-    });
-  });
-  </script>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

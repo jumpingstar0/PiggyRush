@@ -4,7 +4,7 @@
 
 PiggyRush is a single-screen, two-player co-op tower-defense game designed for iPad browsers. It is inspired by the readable lane defense, wave pressure, and tactical tower placement of Kingdom Rush, but its signature feature is local simultaneous play: two players share one iPad in landscape orientation, each holding one short edge of the iPad face-to-face and controlling one hero from that edge.
 
-The first playable version is one polished level delivered as a single `index.html`. It uses Phaser 3 for rendering, scaling, game loop, and multi-touch input, with no build step or backend.
+The first playable version is a polished local web build delivered through a TypeScript project. It uses Phaser 4 for rendering, scaling, game loop, and multi-touch input, with Vite providing the lightweight development server and production bundle. There is no backend.
 
 ### Core Promise
 
@@ -15,7 +15,7 @@ Two players defend the piggy-bank kingdom together: build towers, fight enemies 
 - Primary: iPad in landscape orientation.
 - Secondary: desktop browser for development and testing.
 - Input: multi-touch through Pointer Events.
-- Rendering/input engine: Phaser 3, full-screen responsive canvas, multi-pointer touch enabled.
+- Rendering/input engine: Phaser 4, full-screen responsive canvas, multi-pointer touch enabled.
 
 ## 2. Design Goals
 
@@ -27,17 +27,17 @@ Two players defend the piggy-bank kingdom together: build towers, fight enemies 
    - Enemies, towers, heroes, projectiles, health, gold, and wave state must be clear at arm's length.
    - The battlefield should feel busy but never visually noisy.
 
-3. **Single-file portability**
-   - The game ships as one HTML file.
+3. **Typed, portable implementation**
+   - The game is implemented in TypeScript with Phaser 4.
    - All art is drawn with Phaser Graphics, text, gradients, and simple shapes.
-   - No image, audio, font, or build-time package downloads.
+   - Runtime has no backend dependency; local development uses Vite.
 
-4. **Polished one-level vertical slice**
+4. **Polished three-level vertical slice**
    - V1 should feel complete, not like a loose engine demo.
-   - Include start, pause, restart, victory, defeat, wave flow, tower placement, hero deaths, and revive behavior.
+   - Include hero selection, level selection, difficulty selection, pause, restart, victory, defeat, wave flow, tower placement, hero deaths, and revive behavior.
 
 5. **Simple deterministic systems**
-   - Use plain JavaScript classes and config objects.
+   - Use TypeScript classes, interfaces, and config objects.
    - Keep balance data centralized so iteration is easy.
    - Avoid complex pathfinding; enemies follow predefined waypoint paths.
 
@@ -55,6 +55,24 @@ The game uses the whole screen in landscape.
 - **Right-edge control cluster:** Player 2 virtual joystick and ability button, with labels rotated toward Player 2.
 
 The left and right edge control regions can be visually hinted with subtle translucent overlays, but the battlefield remains one shared play space. Enemies travel through the center from one long side of the iPad to the opposite long side.
+
+### Initial Selection Screen
+
+Before the battlefield begins, players land on a single initial screen with three setup decisions:
+
+- **Player 1 hero:** choose one of three heroes.
+- **Player 2 hero:** choose one of the remaining three heroes; duplicate hero picks are not allowed.
+- **Level:** choose one of three designed levels.
+- **Difficulty:** choose one of three difficulty tiers.
+
+The selection screen must be usable by touch and desktop mouse. It should show both player hero cards side by side, a level row, a difficulty row, and one clear Start button. Starting the run creates a fresh game state using the selected heroes, level, and difficulty.
+
+Recommended initial defaults:
+
+- Player 1: Penny Knight.
+- Player 2: Coin Mage.
+- Level: Coin Meadow Pass.
+- Difficulty: Normal.
 
 ### Control Rules
 
@@ -116,28 +134,29 @@ Bright, playful fantasy arcade:
 
 ## 5. Core Gameplay Loop
 
-1. The level loads into a ready state.
-2. Players see base health, gold, wave count, build spots, heroes, and controls.
-3. Players build initial towers from shared gold.
-4. Players start the wave manually or after a short countdown.
-5. Enemies spawn and follow the path.
-6. Towers attack automatically.
-7. Heroes move freely near the road, attack nearby enemies automatically, and cast abilities on command.
-8. Defeated enemies grant shared gold.
-9. Between waves, players spend gold on towers and upgrades.
-10. The game ends with victory after the final wave or defeat when base health reaches zero.
+1. Players choose two heroes, one level, and one difficulty.
+2. The selected level loads into a ready state.
+3. Players see base health, gold, wave count, build spots, selected heroes, and controls.
+4. Players build initial towers from shared gold.
+5. Players start the wave manually or after a short countdown.
+6. Enemies spawn and follow the selected level path.
+7. Towers attack automatically.
+8. Heroes move freely near the road, attack nearby enemies automatically, and cast abilities on command.
+9. Defeated enemies grant shared gold.
+10. Between waves, players spend gold on towers and upgrades.
+11. The game ends with victory after the final wave or defeat when base health reaches zero.
 
 ## 6. Level Design
 
-### Map
+V1 has three selectable maps. Each level uses a predefined waypoint list normalized to a 1000 x 600 world coordinate space. Build spots are fixed per map and positioned near, but not on, the path.
 
-V1 has one map: **Coin Meadow Pass**.
+### Level 1: Coin Meadow Pass
 
-The path enters from the top long side, curves through the center, and exits into the piggy-bank base at the bottom long side. Use a predefined waypoint list normalized to a 1000 x 600 world coordinate space.
+Purpose: first-run readable lane with gentle bends.
 
-Example path:
+Path:
 
-```js
+```ts
 [
   { x: 500, y: -45 },
   { x: 500, y: 95 },
@@ -150,13 +169,9 @@ Example path:
 ]
 ```
 
-### Build Spots
+Build spots:
 
-Use 8 fixed build spots positioned near, but not on, the path.
-
-Recommended normalized positions:
-
-```js
+```ts
 [
   { x: 350, y: 100 },
   { x: 620, y: 125 },
@@ -166,6 +181,85 @@ Recommended normalized positions:
   { x: 650, y: 455 },
   { x: 500, y: 370 },
   { x: 500, y: 205 }
+]
+```
+
+### Level 2: Twisty Market Maze
+
+Purpose: the middle map should be noticeably more complex than the first and third maps. It creates more tactical pressure through sharper turns, a longer central loop, and build spots that force players to cover both early and late path segments.
+
+Path:
+
+```ts
+[
+  { x: 488, y: -48 },
+  { x: 488, y: 68 },
+  { x: 338, y: 105 },
+  { x: 284, y: 184 },
+  { x: 416, y: 232 },
+  { x: 610, y: 198 },
+  { x: 724, y: 270 },
+  { x: 612, y: 348 },
+  { x: 392, y: 326 },
+  { x: 276, y: 402 },
+  { x: 430, y: 486 },
+  { x: 594, y: 446 },
+  { x: 510, y: 548 },
+  { x: 510, y: 648 }
+]
+```
+
+Build spots:
+
+```ts
+[
+  { x: 355, y: 64 },
+  { x: 612, y: 92 },
+  { x: 230, y: 258 },
+  { x: 508, y: 155 },
+  { x: 782, y: 204 },
+  { x: 720, y: 392 },
+  { x: 500, y: 292 },
+  { x: 338, y: 506 },
+  { x: 666, y: 518 },
+  { x: 222, y: 430 }
+]
+```
+
+### Level 3: Vault Bridge Run
+
+Purpose: slightly harder than Level 1 but simpler than the middle map, with a broad diagonal route and strong late-path tower opportunities.
+
+Path:
+
+```ts
+[
+  { x: 190, y: -45 },
+  { x: 260, y: 94 },
+  { x: 420, y: 152 },
+  { x: 640, y: 188 },
+  { x: 780, y: 276 },
+  { x: 700, y: 385 },
+  { x: 536, y: 420 },
+  { x: 420, y: 492 },
+  { x: 500, y: 548 },
+  { x: 500, y: 648 }
+]
+```
+
+Build spots:
+
+```ts
+[
+  { x: 142, y: 118 },
+  { x: 350, y: 78 },
+  { x: 512, y: 238 },
+  { x: 710, y: 122 },
+  { x: 850, y: 342 },
+  { x: 620, y: 480 },
+  { x: 356, y: 394 },
+  { x: 498, y: 344 },
+  { x: 256, y: 520 }
 ]
 ```
 
@@ -182,7 +276,7 @@ Heroes can move through the battlefield but should remain inside the world bound
 
 ## 7. Heroes
 
-Both heroes are active at the start.
+Two heroes are active in each run, one per player. The initial screen offers three heroes and prevents both players from choosing the same hero.
 
 ### Shared Hero Rules
 
@@ -193,7 +287,7 @@ Both heroes are active at the start.
 - Downed heroes revive automatically after a short timer at partial health.
 - Downed heroes do not cause defeat directly.
 
-### Player 1 Hero: Penny Knight
+### Penny Knight
 
 Role: durable melee defender.
 
@@ -209,7 +303,7 @@ Role: durable melee defender.
   - Damage: 45.
   - Bonus: briefly knocks enemies back along the path by a small amount.
 
-### Player 2 Hero: Coin Mage
+### Coin Mage
 
 Role: ranged control and burst.
 
@@ -223,6 +317,22 @@ Role: ranged control and burst.
   - Effect: fires a piercing line or fast projectile toward the nearest enemy.
   - Damage: 35.
   - Bonus: applies a short slow to each enemy hit.
+
+### Bacon Ranger
+
+Role: mobile ranged skirmisher.
+
+- Health: 125.
+- Move speed: 178 world units per second.
+- Attack range: 130.
+- Attack damage: 10.
+- Attack cooldown: 0.45 seconds.
+- Ability: **Truffle Trap**
+  - Cooldown: 9 seconds.
+  - Effect: drops a trap at the hero's feet.
+  - Radius: 82.
+  - Damage: 26.
+  - Bonus: heavily slows enemies that cross the trap for a short duration.
 
 ### Revive Rules
 
@@ -331,7 +441,7 @@ Optional advanced V1 enemy.
 
 ## 10. Waves
 
-Use a scripted array inside the HTML. Waves should be deterministic and easy to tune.
+Use a scripted TypeScript array. Waves should be deterministic and easy to tune.
 
 Example shape:
 
@@ -373,7 +483,44 @@ Wave pacing:
 - Inter-wave preparation time: manual start button plus optional countdown.
 - Final wave should be challenging but winnable with towers and active hero use.
 
-## 11. Economy
+## 11. Difficulty
+
+V1 has three selectable difficulty tiers. Difficulty affects starting resources, base health, enemy health, enemy speed, enemy reward, and wave clear bonus without changing the selected map geometry.
+
+### Cozy
+
+Purpose: forgiving first play on iPad.
+
+- Starting gold: 260.
+- Base health: 32.
+- Enemy health multiplier: 0.85.
+- Enemy speed multiplier: 0.92.
+- Enemy reward multiplier: 1.15.
+- Wave clear bonus: 45 gold.
+
+### Normal
+
+Purpose: intended default balance.
+
+- Starting gold: 220.
+- Base health: 25.
+- Enemy health multiplier: 1.0.
+- Enemy speed multiplier: 1.0.
+- Enemy reward multiplier: 1.0.
+- Wave clear bonus: 35 gold.
+
+### Spicy
+
+Purpose: tighter co-op coordination and tower placement.
+
+- Starting gold: 190.
+- Base health: 18.
+- Enemy health multiplier: 1.18.
+- Enemy speed multiplier: 1.08.
+- Enemy reward multiplier: 0.9.
+- Wave clear bonus: 25 gold.
+
+## 12. Economy
 
 The economy is shared by both players.
 
@@ -384,7 +531,7 @@ The economy is shared by both players.
 - If two players tap build at the same time, resolve actions sequentially in event order.
 - If there is not enough gold, show a small red cost flash and do not build.
 
-## 12. User Interface
+## 13. User Interface
 
 ### HUD
 
@@ -416,7 +563,8 @@ When tapping a built tower:
 
 Use lightweight overlays for:
 
-- Start screen.
+- Initial selection screen.
+- Ready/start screen after selections are confirmed.
 - Pause screen.
 - Victory screen.
 - Defeat screen.
@@ -431,27 +579,38 @@ If the viewport is portrait or too narrow:
 - Do not permanently block desktop testing.
 - The overlay should disappear when landscape dimensions return.
 
-## 13. Technical Architecture
+## 14. Technical Architecture
 
-The implementation target is one file:
+The implementation target is a small TypeScript project:
 
 ```text
 index.html
+src/main.ts
+package.json
+tsconfig.json
+vite.config.ts
 ```
 
-The file contains:
+The HTML file contains:
 
 - HTML shell with one Phaser parent container.
 - Inline CSS for full-screen layout, touch behavior, and fallback UI.
-- Phaser 3 loaded by script tag.
-- Inline JavaScript for all game systems.
+- Module script that loads the TypeScript entry through Vite.
 
-### Recommended JavaScript Structure
+The TypeScript entry contains:
+
+- Phaser 4 imports.
+- Centralized typed config for heroes, levels, difficulties, towers, enemies, and waves.
+- Runtime classes for game systems.
+- Scene lifecycle and rendering.
+
+### Recommended TypeScript Structure
 
 Use small classes and plain configs:
 
 ```text
 PiggyRushScene
+SelectionState
 Hero
 Enemy
 Tower
@@ -469,8 +628,9 @@ Owns global state:
 - Phaser scene lifecycle.
 - World scale.
 - Entities.
+- Selected heroes, level, and difficulty.
 - Gold, base health, current wave.
-- Game mode: `start`, `playing`, `paused`, `victory`, `defeat`.
+- Game mode: `select`, `ready`, `playing`, `paused`, `victory`, `defeat`.
 - Main loop through Phaser `update`.
 
 Responsibilities:
@@ -534,7 +694,7 @@ Each frame:
 7. Resolve deaths, rewards, leaks, victory, and defeat.
 8. Render.
 
-## 14. Rendering Requirements
+## 15. Rendering Requirements
 
 ### Phaser Scaling
 
@@ -559,7 +719,7 @@ The game must always make these readable:
 - Use simple shadows and outlines for readability.
 - Use color plus shape differences, not color alone.
 
-## 15. Input Edge Cases
+## 16. Input Edge Cases
 
 Handle these cases explicitly:
 
@@ -578,7 +738,7 @@ Expected behavior:
 - Cancelled pointers clear safely.
 - Resize recalculates canvas, controls, and screen-to-world transform.
 
-## 16. Accessibility and Usability
+## 17. Accessibility and Usability
 
 - Use large touch targets: at least 56 CSS pixels for buttons.
 - Use clear cooldown arcs or fills.
@@ -587,7 +747,7 @@ Expected behavior:
 - Provide desktop keyboard fallback for development.
 - Keep important UI away from iPad browser safe-area edges using CSS safe-area env variables where useful.
 
-## 17. Performance Requirements
+## 18. Performance Requirements
 
 The game should run smoothly on recent iPads.
 
@@ -598,12 +758,13 @@ The game should run smoothly on recent iPads.
 - Use simple Canvas shapes instead of heavy effects.
 - Keep all collision checks simple radius or distance checks.
 
-## 18. Testing Plan
+## 19. Testing Plan
 
 ### Browser Smoke Test
 
-- Open `index.html` directly in Safari or Chrome.
-- Confirm the start screen renders.
+- Run the Vite dev server and open the local URL in Safari or Chrome.
+- Confirm the initial selection screen renders.
+- Pick two different heroes, one level, and one difficulty.
 - Start the game.
 - Confirm first wave can begin.
 
@@ -617,6 +778,8 @@ The game should run smoothly on recent iPads.
 ### Gameplay Test
 
 - Build each tower type.
+- Confirm all three levels can start.
+- Confirm all three difficulty tiers change starting resources.
 - Confirm gold decreases correctly.
 - Confirm enemies follow the full path.
 - Confirm towers fire at enemies in range.
@@ -640,30 +803,30 @@ The game should run smoothly on recent iPads.
 - Verify mouse/touch simulation can build towers and activate menus.
 - Resize the browser window and confirm the layout adapts.
 
-## 19. Acceptance Criteria
+## 20. Acceptance Criteria
 
 The V1 implementation is complete when:
 
-- The game is fully playable from a single local `index.html`.
-- No network access is required.
+- The game is fully playable through the local TypeScript/Vite build.
+- Runtime play does not require a backend.
 - Two players can control separate heroes simultaneously on one iPad.
 - Each player is restricted to their half-screen controls.
+- Initial setup allows two-player hero selection from three heroes.
+- Initial setup allows three level choices and three difficulty choices.
 - The shared co-op tower-defense loop is functional from start to victory or defeat.
 - At least three tower types and three enemy types are implemented.
 - Ten scripted waves are implemented.
 - Pause, restart, victory, and defeat states work.
 - The layout remains readable and usable on iPad landscape.
 
-## 20. Future Enhancements
+## 21. Future Enhancements
 
 These are intentionally out of scope for V1 but should be compatible with the architecture:
 
-- Multiple levels.
 - More heroes.
 - More tower upgrades and specializations.
 - Boss waves.
-- Local difficulty settings.
 - Sound effects and music generated or embedded as data.
 - Persistent high score in `localStorage`.
-- Better art assets if the single-file constraint is relaxed.
+- Better art assets if the shape-only art direction is relaxed.
 - Online co-op is explicitly out of scope for this design.
