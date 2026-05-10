@@ -448,11 +448,14 @@
       this.input.on("pointermove", pointer => this.pointerMove(pointer));
       this.input.on("pointerup", pointer => this.pointerUp(pointer));
       this.input.on("pointerupoutside", pointer => this.pointerUp(pointer));
+            this.input.on("pointercancel", pointer => this.releasePointer(this.pointerId(pointer)));
+      window.addEventListener("pointercancel", event => this.releasePointer(event.pointerId));
       window.addEventListener("keydown", event => {
         if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "Enter"].includes(event.key)) event.preventDefault();
         if (event.key === "p" || event.key === "P") this.togglePause();
         if (event.key === "r" || event.key === "R") this.resetGame();
         if (event.key === "f" || event.key === "F") this.tryHeroAbility(0);
+      
         if (event.key === "/" || event.key === "Enter") this.tryHeroAbility(1);
         if (event.key === " ") this.startWave();
         this.keys.add(event.key);
@@ -585,6 +588,18 @@
         joy.vector = { x: 0, y: 0 };
       } else if (state.type === "tap" && !state.moved) {
         this.handleWorldTap(state.last);
+      }
+      this.activePointers.delete(id);
+    }
+    
+    releasePointer(id) {
+      const state = this.activePointers.get(id);
+      if (!state) return;
+      if (state.type === "joystick") {
+        const joy = this.joysticks[state.player];
+        joy.active = false;
+        joy.pointerId = null;
+        joy.vector = { x: 0, y: 0 };
       }
       this.activePointers.delete(id);
     }
